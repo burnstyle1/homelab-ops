@@ -18,7 +18,7 @@ Went through the edge one thing at a time asking "does this need to be exposed, 
 - Turned off SSH on pfSense.
 - Deleted the dead firewall rules.
 - Repointed NPM at stable host-mapped IPs so proxying is predictable.
-- Restricted Vaultwarden to Tailscale/internal only.
+- Restricted Vaultwarden to internal only.
 
 ## Prevention
 - Baseline I hold to now: management interfaces don't face the internet, and secrets services are reachable over Tailscale only.
