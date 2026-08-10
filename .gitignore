@@ -1,0 +1,22 @@
+# Secrets and environment — never commit
+.env
+*.env
+*.key
+*.pem
+*.crt
+*_rsa
+*_ed25519
+credentials*
+secrets*
+
+# Backups / dumps that may contain sensitive data
+*.sql
+*.dump
+*.bak
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
