@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 980" width="1480" height="980">
+<rect x="0" y="0" width="1480" height="980" rx="0" ry="0" fill="#ffffff" stroke="#ffffff" stroke-width="0" />
+<text x="740.0" y="46" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="27" font-weight="bold" fill="#1F3864" text-anchor="middle">Rebellious Amish Family</text>
+<text x="740.0" y="68" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="normal" fill="#7a7a7a" text-anchor="middle">Home Infrastructure  ·  Network Architecture (sanitized)</text>
+<rect x="40" y="90" width="1400" height="120" rx="12" ry="12" fill="#eaf2fb" stroke="#5b83b0" stroke-width="2" />
+<rect x="40" y="90" width="1400" height="28" rx="12" ry="12" fill="#5b83b0" stroke="#5b83b0" stroke-width="0" />
+<rect x="40" y="104" width="1400" height="14" rx="0" ry="0" fill="#5b83b0" stroke="#5b83b0" stroke-width="0" />
+<text x="54" y="109" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">INTERNET / EDGE</text>
+<rect x="80.0" y="138" width="300" height="56" rx="7" ry="7" fill="#ffffff" stroke="#5b83b0" stroke-width="1.5" />
+<text x="230.0" y="170.0" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="middle">Internet (ISP)</text>
+<rect x="420.0" y="138" width="300" height="56" rx="7" ry="7" fill="#ffffff" stroke="#5b83b0" stroke-width="1.5" />
+<text x="570.0" y="162.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">Edge Proxy</text>
+<text x="570.0" y="176.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">CDN · Tunnels</text>
+<rect x="760.0" y="138" width="300" height="56" rx="7" ry="7" fill="#ffffff" stroke="#5b83b0" stroke-width="1.5" />
+<text x="910.0" y="162.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">VPN Mesh Overlay</text>
+<text x="910.0" y="176.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Remote Access</text>
+<rect x="1100.0" y="138" width="300" height="56" rx="7" ry="7" fill="#ffffff" stroke="#5b83b0" stroke-width="1.5" />
+<text x="1250.0" y="162.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">Cloud Threat Intel</text>
+<text x="1250.0" y="176.66666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">(IPS feed)</text>
+<rect x="600.0" y="238" width="280" height="58" rx="7" ry="7" fill="#fff" stroke="#b85450" stroke-width="3" />
+<text x="740.0" y="271.0" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="middle">Firewall / Router  +  IPS</text>
+<rect x="620.0" y="320" width="240" height="50" rx="7" ry="7" fill="#fff8e6" stroke="#c9ab3f" stroke-width="1.5" />
+<text x="740.0" y="349.0" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="middle">Core PoE Switch</text>
+<path d="M 230.0 194 L 230.0 216.0 L 740.0 216.0 L 740.0 238" fill="none" stroke="#444" stroke-width="2"/>
+<path d="M 740.0 296 L 740.0 320" fill="none" stroke="#444" stroke-width="2"/>
+<path d="M 570.0 194 L 570.0 216.0 L 670.0 216.0 L 670.0 238" fill="none" stroke="#5b83b0" stroke-width="1.6" stroke-dasharray="5,4"/>
+<path d="M 910.0 194 L 910.0 216.0 L 810.0 216.0 L 810.0 238" fill="none" stroke="#5b83b0" stroke-width="1.6" stroke-dasharray="5,4"/>
+<path d="M 1250.0 194 L 1250.0 216.0 L 850.0 216.0 L 850.0 238" fill="none" stroke="#5b83b0" stroke-width="1.6" stroke-dasharray="5,4"/>
+<rect x="40" y="395" width="690" height="405" rx="12" ry="12" fill="#eafaf0" stroke="#6fa356" stroke-width="2" />
+<rect x="40" y="395" width="690" height="28" rx="12" ry="12" fill="#6fa356" stroke="#6fa356" stroke-width="0" />
+<rect x="40" y="409" width="690" height="14" rx="0" ry="0" fill="#6fa356" stroke="#6fa356" stroke-width="0" />
+<text x="54" y="414" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">TRUSTED LAN</text>
+<rect x="70" y="440" width="190" height="54" rx="7" ry="7" fill="#ffffff" stroke="#6fa356" stroke-width="1.5" />
+<text x="165.0" y="463.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">DNS Resolver</text>
+<text x="165.0" y="477.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">(primary)</text>
+<rect x="280" y="440" width="190" height="54" rx="7" ry="7" fill="#ffffff" stroke="#6fa356" stroke-width="1.5" />
+<text x="375.0" y="463.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">DNS Resolver</text>
+<text x="375.0" y="477.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">(HA secondary)</text>
+<path d="M 260 467 L 280 467" fill="none" stroke="#6fa356" stroke-width="1.4" stroke-dasharray="4,3"/>
+<rect x="254.0" y="458.0" width="32" height="16" rx="3" ry="3" fill="#ffffff" stroke="#ffffff" stroke-width="0" />
+<text x="270.0" y="470.0" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="9" font-weight="normal" fill="#666" text-anchor="middle">sync</text>
+<rect x="495" y="440" width="205" height="54" rx="7" ry="7" fill="#ffffff" stroke="#6fa356" stroke-width="1.5" />
+<text x="597.5" y="471.0" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" font-weight="bold" fill="#333333" text-anchor="middle">Workstation</text>
+<rect x="70" y="513" width="190" height="50" rx="7" ry="7" fill="#ffffff" stroke="#6fa356" stroke-width="1.5" />
+<text x="165.0" y="534.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Wireless Access Pts</text>
+<text x="165.0" y="548.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">(x3)</text>
+<rect x="70" y="580" width="630" height="200" rx="9" ry="9" fill="#ffffff" stroke="#6fa356" stroke-width="2" />
+<text x="84" y="602" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#3f6e32" text-anchor="start">Storage &amp; App Server</text>
+<text x="84" y="619" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="10" font-weight="normal" fill="#8a8a8a" text-anchor="start">multi-service container host</text>
+<rect x="86" y="632" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="157.0" y="657.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Media</text>
+<text x="157.0" y="671.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Services</text>
+<rect x="244" y="632" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="315.0" y="657.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Monitoring &amp;</text>
+<text x="315.0" y="671.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Observability</text>
+<rect x="402" y="632" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="473.0" y="664.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Databases</text>
+<rect x="560" y="632" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="631.0" y="657.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Reverse</text>
+<text x="631.0" y="671.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Proxy</text>
+<rect x="86" y="702" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="157.0" y="727.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Secrets</text>
+<text x="157.0" y="741.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Manager</text>
+<rect x="244" y="702" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="315.0" y="727.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Photo</text>
+<text x="315.0" y="741.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Management</text>
+<rect x="402" y="702" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="473.0" y="727.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Location</text>
+<text x="473.0" y="741.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Tracking</text>
+<rect x="560" y="702" width="142" height="58" rx="7" ry="7" fill="#f4fbf1" stroke="#6fa356" stroke-width="1.5" />
+<text x="631.0" y="727.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Web &amp;</text>
+<text x="631.0" y="741.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Utility Apps</text>
+<rect x="750" y="395" width="360" height="300" rx="12" ry="12" fill="#fff4e8" stroke="#d79b00" stroke-width="2" />
+<rect x="750" y="395" width="360" height="28" rx="12" ry="12" fill="#d79b00" stroke="#d79b00" stroke-width="0" />
+<rect x="750" y="409" width="360" height="14" rx="0" ry="0" fill="#d79b00" stroke="#d79b00" stroke-width="0" />
+<text x="764" y="414" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">ISOLATED SERVICES · VLAN 50</text>
+<rect x="774" y="439" width="312" height="150" rx="9" ry="9" fill="#fff" stroke="#d79b00" stroke-width="2" />
+<text x="788" y="461" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="12" font-weight="bold" fill="#9c6d00" text-anchor="start">Virtualization Host</text>
+<rect x="790" y="475" width="280" height="42" rx="7" ry="7" fill="#fff6ec" stroke="#d79b00" stroke-width="1.5" />
+<text x="930.0" y="499.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">App Server VM</text>
+<rect x="790" y="525" width="280" height="42" rx="7" ry="7" fill="#fff6ec" stroke="#d79b00" stroke-width="1.5" />
+<text x="930.0" y="549.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Photo Hosting VM</text>
+<rect x="774" y="605" width="312" height="54" rx="7" ry="7" fill="#ffffff" stroke="#d79b00" stroke-width="1.5" />
+<text x="930.0" y="628.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">Backup Server</text>
+<text x="930.0" y="642.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">(scheduled VM backups)</text>
+<rect x="1130" y="395" width="310" height="300" rx="12" ry="12" fill="#fffbe8" stroke="#c9ab3f" stroke-width="2" />
+<rect x="1130" y="395" width="310" height="28" rx="12" ry="12" fill="#c9ab3f" stroke="#c9ab3f" stroke-width="0" />
+<rect x="1130" y="409" width="310" height="14" rx="0" ry="0" fill="#c9ab3f" stroke="#c9ab3f" stroke-width="0" />
+<text x="1144" y="414" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">IoT ISOLATION · VLAN 20</text>
+<rect x="1154" y="443" width="262" height="46" rx="7" ry="7" fill="#ffffff" stroke="#c9ab3f" stroke-width="1.5" />
+<text x="1285.0" y="469.6666666666667" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Voice Assistants</text>
+<rect x="1154" y="503" width="262" height="46" rx="7" ry="7" fill="#ffffff" stroke="#c9ab3f" stroke-width="1.5" />
+<text x="1285.0" y="529.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Smart Home Devices</text>
+<rect x="1154" y="563" width="262" height="46" rx="7" ry="7" fill="#ffffff" stroke="#c9ab3f" stroke-width="1.5" />
+<text x="1285.0" y="589.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Zigbee Coordinator</text>
+<text x="1285.0" y="633" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="10" font-weight="normal" fill="#8a7a1a" text-anchor="middle">reaches internet only —</text>
+<text x="1285.0" y="649" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="10" font-weight="normal" fill="#8a7a1a" text-anchor="middle">no LAN access</text>
+<rect x="750" y="720" width="360" height="150" rx="12" ry="12" fill="#f4eff9" stroke="#9673a6" stroke-width="2" />
+<rect x="750" y="720" width="360" height="28" rx="12" ry="12" fill="#9673a6" stroke="#9673a6" stroke-width="0" />
+<rect x="750" y="734" width="360" height="14" rx="0" ry="0" fill="#9673a6" stroke="#9673a6" stroke-width="0" />
+<text x="764" y="739" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">LoRaWAN</text>
+<rect x="774" y="768" width="312" height="44" rx="7" ry="7" fill="#ffffff" stroke="#9673a6" stroke-width="1.5" />
+<text x="930.0" y="793.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">LoRaWAN Gateway</text>
+<rect x="774" y="820" width="312" height="36" rx="7" ry="7" fill="#ffffff" stroke="#9673a6" stroke-width="1.5" />
+<text x="930.0" y="841.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">Outdoor Access Points</text>
+<rect x="1130" y="720" width="310" height="150" rx="12" ry="12" fill="#fdeeee" stroke="#b85450" stroke-width="2" />
+<rect x="1130" y="720" width="310" height="28" rx="12" ry="12" fill="#b85450" stroke="#b85450" stroke-width="0" />
+<rect x="1130" y="734" width="310" height="14" rx="0" ry="0" fill="#b85450" stroke="#b85450" stroke-width="0" />
+<text x="1144" y="739" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="start">OFFSITE &amp; EXTERNAL</text>
+<rect x="1154" y="768" width="262" height="42" rx="7" ry="7" fill="#ffffff" stroke="#b85450" stroke-width="1.5" />
+<text x="1285.0" y="792.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="bold" fill="#333333" text-anchor="middle">Offsite Backup</text>
+<rect x="1154" y="818" width="262" height="42" rx="7" ry="7" fill="#ffffff" stroke="#b85450" stroke-width="1.5" />
+<text x="1285.0" y="842.6666666666666" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#333333" text-anchor="middle">External Web Hosting</text>
+<path d="M 740.0 370 L 385.0 395" fill="none" stroke="#444" stroke-width="2"/>
+<path d="M 740.0 370 L 740.0 382.5 L 930.0 382.5 L 930.0 395" fill="none" stroke="#444" stroke-width="2"/>
+<path d="M 740.0 370 L 740.0 382.5 L 1285.0 382.5 L 1285.0 395" fill="none" stroke="#444" stroke-width="2"/>
+<path d="M 930.0 695 L 930.0 720" fill="none" stroke="#9673a6" stroke-width="1.6" stroke-dasharray="5,4"/>
+<rect x="40" y="812" width="690" height="150" rx="8" ry="8" fill="#fbfbfb" stroke="#dddddd" stroke-width="1.5" />
+<text x="56" y="836" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="13" font-weight="bold" fill="#444" text-anchor="start">Legend</text>
+<path d="M 60 864 L 106 864" stroke="#444" stroke-width="2.4" fill="none"/>
+<text x="116" y="868" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#555" text-anchor="start">Wired backbone (physical / VLAN trunk)</text>
+<path d="M 60 892 L 106 892" stroke="#5b83b0" stroke-width="2.4" stroke-dasharray="5,4" fill="none"/>
+<text x="116" y="896" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#555" text-anchor="start">Encrypted overlay — VPN mesh / tunnels</text>
+<path d="M 60 920 L 106 920" stroke="#6fa356" stroke-width="2.4" stroke-dasharray="4,3" fill="none"/>
+<text x="116" y="924" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#555" text-anchor="start">Service sync / HA replication</text>
+<text x="60" y="948" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="10" font-weight="normal" fill="#999" text-anchor="start">Roles-only view. No addresses, ports, versions, or product names published.</text>
+<text x="1440" y="958" font-family="'DejaVu Sans','Segoe UI',Arial,sans-serif" font-size="11" font-weight="normal" fill="#aaa" text-anchor="end">Segmented L2/L3 · HA DNS · 3-2-1 backups · monitored</text>
+</svg>
