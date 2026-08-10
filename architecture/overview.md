@@ -1,5 +1,9 @@
 # Environment Overview
 
+![Sanitized network architecture](network-diagram.svg)
+
+*Roles-only view — no addresses, ports, versions, or product names published. See the [note on redactions](../README.md) for why.*
+
 A single-owner setup that runs personal services plus the production side of a
 few public-facing community platforms. What I care about, roughly in order:
 keeping it up (real people use it), keeping it locked down (it's public and it's
@@ -21,7 +25,7 @@ them from a member.
 - A separate VLAN for services I don't want sharing a broadcast domain with the
   everyday stuff.
 - Tailscale for remote access and for reaching things that are deliberately not
-  on the internet.
+  on the internet (the secrets manager, for one).
 - Cloudflare in front of the handful of services that are actually meant to be
   reachable from outside.
 
