@@ -21,6 +21,6 @@ Went through the edge one thing at a time asking "does this need to be exposed, 
 - Restricted Vaultwarden to internal only.
 
 ## Prevention
-- Baseline I hold to now: management interfaces don't face the internet, and secrets services are reachable over Tailscale only.
+- Baseline I hold to now: management interfaces don't face the internet, and secrets services are reachable internal only.
 - Wrote down the cleaned-up state so I've got something to compare against when things drift later.
 - Re-check exposure whenever I publish something new instead of assuming the edge stayed the way I left it.
