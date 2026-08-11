@@ -25,7 +25,7 @@ them from a member.
 - A separate VLAN for services I don't want sharing a broadcast domain with the
   everyday stuff.
 - Tailscale for remote access and for reaching things that are deliberately not
-  on the internet (the secrets manager, for one).
+  on the internet.
 - Cloudflare in front of the handful of services that are actually meant to be
   reachable from outside.
 
