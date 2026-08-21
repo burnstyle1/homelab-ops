@@ -10,7 +10,7 @@ what happened, how I chased it down, what I changed so it wouldn't happen again.
 
 **Stack:** Proxmox + PBS · Unraid · Docker · pfSense · UniFi · Pi-hole (HA) ·
 Grafana / Prometheus / netdata / Uptime Kuma · Tailscale · Cloudflare ·
-CrowdSec · Nginx Proxy Manager
+CrowdSec · Nginx Proxy Manager · Ollama / Open WebUI (local LLM)
 
 ## Incidents
 
@@ -23,10 +23,12 @@ CrowdSec · Nginx Proxy Manager
 | 05 | [macvlan → ipvlan](incidents/05-docker-macvlan-ipvlan-migration.md) | Networking | Containers couldn't reach their own host. macvlan working as designed. |
 
 ## Also here
+
 - [Architecture overview](architecture/overview.md) — hosts, how the network's split up, why.
-- Runbooks: [Pi-hole HA failover](runbooks/pihole-ha-failover.md) · [Proxmox host migration](runbooks/proxmox-host-migration.md)
+- Runbooks: [Pi-hole HA failover](runbooks/pihole-ha-failover.md) · [Proxmox host migration](runbooks/proxmox-host-migration.md) · [AI inference box](runbooks/ai-inference-box.md)
 
 ## On the redactions
+
 This is scrubbed on purpose. Internal addressing is shown as generic RFC1918,
 anyone else involved is anonymized, and there are no secrets or credentials in
 here. Nothing in this repo relates to any employer system.
