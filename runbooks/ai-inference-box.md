@@ -1,10 +1,10 @@
 # AI Inference Box (`<host>`) - Build & Operations Runbook
 
-> **Public version.** Network specifics are genericized. Placeholders: `<box-ip>` is the box's LAN address, `<host>` its hostname, `<services-vlan>` the isolated services VLAN, `<user>` the serve service account, `<bot-user>` the Discord bot's service account. Real values, firewall rules, detailed security posture, the bot token, guild and channel IDs, and the community's verified puzzle data (verses, litany, author hints, per-city values) are kept out of this document.
+> **Public version.** Network specifics are genericized. Placeholders: `<box-ip>` is the box's LAN address, `<host>` its hostname, `<services-vlan>` the isolated services VLAN, `<user>` the serve service account, `<bot-user>` the Discord bot's service account. Real values, firewall rules, detailed security posture, the bot token, guild and channel IDs, and the community's puzzle data (verses, litany, author hints, per-city values, and the raw forum archive) are kept out of this document.
 
 **Host:** `<host>` at `<box-ip>` (`<services-vlan>`)
 **Purpose:** always-on local LLM inference behind a RAG chatbot for *The Secret* treasure-hunting community, plus a private chat hub and a future read-only ops reader.
-**Status:** operational. Engine and private hub done. The custom three-collection RAG service (serve.py) is live under systemd and wired into Open WebUI, the deterministic city registry runs inside the serve pipeline, and the Discord bot is live. The ops reader is still pending.
+**Status:** operational. Engine and private hub done. The custom four-collection RAG service (serve.py) is live under systemd and wired into Open WebUI, the deterministic city registry runs inside the serve pipeline, a gated historical-forum tier is live, and the Discord bot is live. The ops reader is still pending.
 **Last updated:** 2026-08-28
 
 ---
@@ -13,7 +13,7 @@
 
 One inference box, one model endpoint, several thin front-ends hung off it. The box is the engine. Each use case is a separate steering wheel pointed at the same Ollama endpoint. Front-ends never share tool sets, so the community bot gets RAG and nothing else.
 
-Retrieval, as of 2026-08-27, runs through the custom `serve.py` service (FastAPI, Chroma, bge-m3), not Open WebUI's built-in document RAG. serve.py owns embedding, retrieval, tiering, and the grounding prompt. In front of retrieval sits a deterministic city registry (`secret_registry.py`). When a question names a city, or references a verse or image number, the verified facts for that casque get injected above the retrieved passages and marked authoritative. Open WebUI is just a front-end that talks to serve over an OpenAI-compatible connection. Its own knowledge-base RAG for this model is detached and unused (see section 6). The older OWUI-native RAG approach is kept as history in section 5-legacy, but it is not the live path anymore.
+Retrieval runs through the custom `serve.py` service (FastAPI, Chroma, bge-m3), not Open WebUI's built-in document RAG. serve.py owns embedding, retrieval, tiering, and the grounding prompt. In front of retrieval sits a deterministic city registry (`secret_registry.py`). When a question names a city, or references a verse or image number, the verified facts for that casque get injected above the retrieved passages and marked authoritative. A fourth retrieval tier, the historical forum archive, is gated: it is queried only when a question is about the history of the search, and stays out of retrieval entirely otherwise (section 5.3). Open WebUI is just a front-end that talks to serve over an OpenAI-compatible connection. Its own knowledge-base RAG for this model is detached and unused (see section 6). The older OWUI-native RAG approach is kept as history in section 5-legacy, but it is not the live path anymore.
 
 **Consumers**
 
@@ -42,7 +42,7 @@ Retrieval, as of 2026-08-27, runs through the custom `serve.py` service (FastAPI
 
 Capacity note: 12 GB of VRAM holds one ~14B model at a time (Q4 is about 9.3 GB of weights). Idle draw is around 15 W at 0% util. The GPU only spikes to ~100% for the seconds it spends generating, then drops back to idle. With the model pinned (section 3.4), it stays resident in VRAM between requests but the cores still idle at ~15 W; `100% GPU` in `ollama ps` means the whole model is *placed* on the card, not that it's *working*.
 
-Embedder note for the serve.py stack: bge-m3 runs on CPU on purpose (`SECRET_EMBED_DEVICE=cpu`) to keep VRAM free for qwen3. CPU embedding is slow and silent. There is no progress bar inside `encode()`, so a batch can sit for a minute or more with no output. That is normal, not a hang. Confirm it with `top` (python pegging cores) or a moving mtime on `chroma_db/chroma.sqlite3`, not a frozen one.
+Embedder note for the serve.py stack: bge-m3 runs on CPU on purpose (`SECRET_EMBED_DEVICE=cpu`) to keep VRAM free for qwen3. CPU embedding is slow and silent. There is no progress bar inside `encode()`, so a batch can sit for a minute or more with no output. That is normal, not a hang. Confirm it with `top` (python pegging cores) or a moving mtime on `chroma_db/chroma.sqlite3`, not a frozen one. One-off bulk index builds (the forum archive is ~40k chunks) can be pointed at the GPU for the build only with `SECRET_EMBED_DEVICE=cuda`, with the serve unit stopped and the model unloaded first so they don't contend for the card; query-time embedding stays on CPU.
 
 ---
 
@@ -146,6 +146,8 @@ Two things that will bite on this step specifically, both learned the hard way (
 - **A copied venv keeps the old interpreter path.** The console-script wrappers in `.venv/bin/` (uvicorn, pip, etc.) hardcode a shebang pointing at wherever the venv was *created*. Move the venv and those shebangs still point at the old path, which `ProtectHome=true` then hides from the service. Invoke uvicorn as a module through the venv's python (`.venv/bin/python -m uvicorn ...`) so the shebang is never consulted. The venv still runs only if its *base* interpreter is a system python (check `pyvenv.cfg` `home =` and `executable =` point outside a home directory); if it was built against a python living in a home dir, recreate it in place instead of copying.
 - **The embedding-model cache has to move with the code.** bge-m3 is ~4.3 GB cached under the building user's `~/.cache/huggingface`. A fresh service account with `ProtectHome=true` can't see that, and `ProtectSystem=strict` won't let it re-download. Copy the cache into `/opt`, point `HF_HOME` at it, and give it a `ReadWritePaths` exception (section 5.6). Miss this and serve starts clean, then fails on the first query when it tries to embed.
 
+> **Staging vs live.** Code is edited in a `<user>`-owned working tree and reaches the live service by an `rsync` into `/opt/secretrag` plus a `chown` to the service account and a unit restart. The two only match when you run that sync. Do it as one deliberate step (a `deploy.sh` is the open item in section 12) so "I edited the file" and "the running bot loads it" never drift apart. When in doubt about what is live, trust `curl localhost:8100/ask` and the `/opt` tree, not a CLI import of a working copy.
+
 ---
 
 ## 4. Configuration reference
@@ -161,7 +163,7 @@ Two things that will bite on this step specifically, both learned the hard way (
 | serve to OWUI connection | OpenAI connection, Base URL `http://<box-ip>:8100/v1`, dummy key |
 | Chroma store | `/opt/secretrag/chroma_db` (`SECRET_CHROMA_DIR`, pinned absolute in the unit) |
 | HF cache (embedder) | `/opt/secretrag/.cache` (`HF_HOME`, holds bge-m3) |
-| Collections | `the_secret` (220), `vault_commentary` (344), `vault_transcripts` (1303) |
+| Collections | `the_secret` (220), `vault_commentary` (344), `vault_transcripts` (1303), `vault_forum` (40116, gated) |
 | Embedder | bge-m3 (`BAAI/bge-m3`), CPU, cosine space |
 | City registry | `/opt/secretrag/secret_registry.py`, 12-city structured-fact lookup, stdlib-only, imported by serve |
 | Discord bot | `/opt/askbyron/askbyron_bot.py`, systemd unit `askbyron`, runs as `<bot-user>`, calls serve `/ask` on localhost (section 7) |
@@ -178,50 +180,54 @@ Location: `/opt/secretrag/` (service account `<user>`, venv `.venv`).
 Shared module: `secret_common.py` holds the config, embedder, Chroma handles, retrieval, and the grounding prompt. `build_index.py`, `serve.py`, and the index scripts all import it, so nothing can disagree about model names, paths, or collection names. `secret_registry.py` is a sibling module that serve imports (section 5.7).
 
 ### 5.1 Corpus & collections
-All three collections live in one Chroma store (`chroma_db`) so retrieval can query across them:
+All four collections live in one Chroma store (`chroma_db`) so retrieval can query across them. They all share bge-m3 and cosine space, which is the only reason cross-collection distances are comparable:
 
 | Collection | Tier | Count | Source |
 |---|---|---|---|
 | `the_secret` | CANON (book text) | 220 | *The Secret* English + Japanese editions (built by `build_index.py`) |
 | `vault_commentary` | COMMENTARY (wiki) | 344 | Cleaned Obsidian vault: 12Treasures / People / Topics notes |
 | `vault_transcripts` | COMMENTARY (podcast) | 1303 | 60 episode cards + 1243 ASR transcript chunks |
+| `vault_forum` | COMMENTARY (forum, gated) | 40116 | Historical forum archive, ~40k posts across 309 threads, 2001-2019. Lowest-authority tier. Queried only on history/theory intent (5.3). |
 
 The collection name is lowercase `the_secret`. Chroma is case-sensitive. The index-script comments say `The_Secret`, which is a doc typo. The live name is lowercase. Get it wrong in the merge and the book tier silently returns zero hits.
 
-### 5.2 Indexing the vault collections
-Scripts: `vault_index.py` builds `vault_commentary`, `transcripts_index.py` builds `vault_transcripts`. Each one drops and rebuilds only its own collection. `the_secret` is never touched.
+### 5.2 Indexing the collections
+Scripts: `build_index.py` builds `the_secret` from the xlsx source, `vault_index.py` builds `vault_commentary`, `transcripts_index.py` builds `vault_transcripts`, and `forum_index.py` builds `vault_forum` from the forum CSV export. Each one drops and rebuilds only its own collection; the others are never touched. `forum_index.py` is stdlib-only for the parse (csv + datetime, no pandas): it strips BBCode `[QUOTE]` blocks (which duplicate other posts), drops trivial and quote-only stubs, windows long posts, and carries `date` / `title` (thread) / `author` metadata so citations convey chronology.
 
-Config lesson that bit us: the index scripts originally hardcoded `CHROMA_PATH = "./chroma"`, but the book store is `./chroma_db` (`sc.CHROMA_DIR`). Hardcoding the wrong path builds the new collections into a separate empty store, and retrieval never sees them. No error, just silence. The fix was to make both scripts inherit the real path:
+Config lesson that bit us: an index script that hardcodes a relative Chroma path (`./chroma`) builds into a separate empty store, and retrieval never sees it. No error, just silence. Every index script inherits the real path instead:
 ```python
 import secret_common as sc
 CHROMA_PATH = sc.CHROMA_DIR
 ```
-That also honors `SECRET_CHROMA_DIR`. Always run them from `/opt/secretrag` as the service account so the import resolves and the files land with the right owner:
+That honors `SECRET_CHROMA_DIR`, which the unit pins absolute. Run index builds as the service account so files land with the right owner and the store resolves to `/opt`'s, and pass the env explicitly to be safe regardless of working directory:
 ```bash
-sudo -u secretrag bash -c 'cd /opt/secretrag && source .venv/bin/activate && python vault_index.py'
+sudo -u secretrag bash -c 'cd /opt/secretrag && \
+  SECRET_CHROMA_DIR=/opt/secretrag/chroma_db HF_HOME=/opt/secretrag/.cache \
+  ./.venv/bin/python vault_index.py'
 ```
-
-To (re)index:
+For the big forum build, add `SECRET_EMBED_DEVICE=cuda` and stop the serve unit and unload the model first so the GPU is free; query-time embedding stays on CPU. Confirm co-location after any build:
 ```bash
-sudo -u secretrag bash -lc 'cd /opt/secretrag && source .venv/bin/activate && \
-  python vault_index.py && python transcripts_index.py && \
-  python -c "import secret_common as sc, chromadb; c=chromadb.PersistentClient(path=sc.CHROMA_DIR); print([(x.name,x.count()) for x in c.list_collections()])"'
+sudo -u secretrag bash -c 'SECRET_CHROMA_DIR=/opt/secretrag/chroma_db /opt/secretrag/.venv/bin/python -c \
+  "import chromadb; c=chromadb.PersistentClient(path=\"/opt/secretrag/chroma_db\"); print([(x.name,x.count()) for x in c.list_collections()])"'
 ```
 
 ### 5.3 Tiered retrieval (secret_common.py)
-`retrieve()` queries all three collections, merges by cosine distance, and returns the top N. The distances are comparable only because all three share bge-m3 and cosine space. The per-tier pull counts are deliberately lopsided: transcripts are noisier, so fewer get pulled and banter rarely wins a slot.
+`retrieve()` queries the collections, merges by cosine distance, and returns the top N. The distances are comparable only because every collection shares bge-m3 and cosine space. The per-tier pull counts are deliberately lopsided: noisier tiers pull fewer so banter rarely wins a slot.
 
 | Env var | Default | Meaning |
 |---|---|---|
 | `SECRET_N_BOOK` | 6 | book chunks queried |
 | `SECRET_N_COMMENTARY` | 6 | wiki chunks queried |
 | `SECRET_N_TRANSCRIPT` | 3 | transcript chunks queried (kept low, noisier tier) |
+| `SECRET_N_FORUM` | 3 | forum chunks queried, but ONLY when the history/theory gate opens (below) |
 | `SECRET_MERGE_TOP_N` | 8 | final merged chunks after distance sort |
 | `SECRET_MAX_DISTANCE` | 2.0 | loose ceiling; tighten toward ~1.0 to drop weak hits |
 
 Good queries land around 0.36 to 0.52, so the 2.0 ceiling currently does nothing. It's a safety net, not a filter. Tightening it is the lever if junk starts surfacing on vague queries.
 
-`build_context()` labels each passage by tier so the model can see the authority level: `[CANON - book text - ...]`, `[COMMENTARY - community wiki - ...]`, `[COMMENTARY - podcast - ...]`.
+`build_context()` labels each passage by tier so the model can see the authority level: `[CANON - book text - ...]`, `[COMMENTARY - community wiki - ...]`, `[COMMENTARY - podcast - ...]`, `[COMMENTARY - historical forum - ...]`.
+
+**Forum tier, gated.** The `vault_forum` tier (5.1) is unverified community opinion, and it is the only tier not queried on every request. `retrieve()` includes it in the merge **only when `_forum_intent(question)` matches** - a precision-biased keyword trigger in `secret_common.py` that fires on history-of-the-search and old-theory questions ("what did people used to think", "early theories", "over the years", "timeline of", the word "forum" itself) and stays silent on fact and solve questions. When the gate is shut, forum is entirely absent from retrieval, so unverified forum opinion cannot leak into a factual answer - not even in the last slot. When the gate opens, forum competes in the distance merge normally, no penalty, capped at `SECRET_N_FORUM` candidates, and can legitimately rank near the top on a history question. The trigger is deliberately tight and fails toward silence: a miss just means a history question gets no forum (safe, the user can rephrase), whereas a false positive would put unverified opinion into a factual answer (not safe). `_FORUM_TRIGGERS` is a plain editable list; extend it as real questions reveal phrasings it misses, then restart serve.
 
 ### 5.4 System prompt (grounding + persona)
 Lives in `secret_common.py` as `SYSTEM_PROMPT`. serve injects it, which means the OWUI model's own System Prompt field does nothing for this model. The current prompt covers:
@@ -230,6 +236,7 @@ Lives in `secret_common.py` as `SYSTEM_PROMPT`. serve injects it, which means th
 - Numbering guardrail: no invented "casque 1/2/3" ordering. Casques are named by city, verse number, or image/painting number. Verse/image/city pairings are established and may be stated. For a found casque, the documented find location is fact. For an unsolved one, the model must not state or imply a dig location as correct.
 - Synthesize, don't paste: answer in its own words, don't dump full verses or wiki cards verbatim unless asked, and drop material about other cities that wasn't asked about.
 - Registry guardrail (added 2026-08-27): when an `=== AUTHORITATIVE CITY REGISTRY ===` block is present, it is the top authority. Its values override any conflicting passage value, including any stray "casque N" numbering. The synthesize-don't-paste rule is exempted for the registry, so its AUTHOR HINTS come through in the author's own words instead of paraphrased. Author hints are still clues toward an unsolved answer, relayed as hints, never as the settled solution or dig location. See section 5.7.
+- Forum guardrail (added 2026-08-28): the historical forum tier (5.3) is the lowest-authority source. When a `[COMMENTARY - historical forum - ...]` passage is present it is unverified community opinion, frequently outdated or wrong, to be reported as history ("the forum argued...", "an early theory held...") and never treated as evidence for a factual claim. It never overrides the book, the wiki, or the podcast.
 
 ### 5.5 serve.py endpoints
 | Endpoint | Use | Notes |
@@ -237,9 +244,9 @@ Lives in `secret_common.py` as `SYSTEM_PROMPT`. serve injects it, which means th
 | `POST /ask` | Discord bot (simple JSON) | `{"question","edition"}` returns `{"answer","sources"}`. Supports explicit edition. |
 | `POST /v1/chat/completions` | OWUI (OpenAI-compatible) | Single-turn by design. Takes the last user message, ignores prior turns. Edition is always auto-sniffed. |
 | `GET /v1/models` | OWUI model discovery | advertises `secret-librarian`. |
-| `GET /health` | health check | Counts `the_secret` only (220), predates the merge. Seeing 220 here does not mean the vault collections are missing. Cosmetic, extend later. |
+| `GET /health` | health check | Counts `the_secret` only (220), predates the merge. Seeing 220 here does not mean the other collections are missing. Cosmetic, extend later. |
 
-Both `/ask` and `/v1/chat/completions` run through the same `answer_question` chain: retrieve, build_context, registry injection, build_messages, Ollama. The registry block is prepended to the context inside `answer_question` (section 5.7), so both endpoints get the registry the same way.
+Both `/ask` and `/v1/chat/completions` run through the same `answer_question` chain: retrieve, build_context, registry injection, build_messages, Ollama. The registry block is prepended to the context inside `answer_question` (section 5.7), and the forum gate lives inside `retrieve()` (section 5.3), so both endpoints - and therefore both the Discord bot and OWUI - get the registry and the gated forum tier the same way, with no per-client code.
 
 serve calls Ollama over a single httpx client with a 120s timeout (`serve.py`). That is wide enough for normal generation but not for a worst-case cold model load stacked on top of a first-request bge-m3 load; with the model pinned (section 3.4) that path is avoided in steady state. See the cold-load row in section 9.
 
@@ -282,9 +289,9 @@ WantedBy=multi-user.target
 Why the unit differs from the bot's, directive by directive, since serve is not the pure dumb pipe the bot is:
 
 - `Requires=ollama.service` + `After=... ollama.service`. serve is useless without Ollama, so it is ordered after it and stopped with it. The bot only needed `network-online` because it reaches serve over localhost. If you would rather serve stay up and retry across an Ollama restart than be stopped with it, use `Wants=` instead of `Requires=`; the trade is that serve then runs during a window where its backend is down and every request errors.
-- The three `Environment=` lines. `SECRET_CHROMA_DIR` is pinned **absolute** on purpose: the in-code default is the relative `./chroma_db`, which resolves against the working directory and would silently follow the process wherever it ran. Absolute means the data path can't drift. `HF_HOME` points the embedder cache at the copied-in bge-m3 (section 3.7). `OLLAMA_URL` is set explicitly even though it matches the default, because leaving tmux means nothing is inherited from a shell anymore; the unit documents its own dependencies.
+- The three `Environment=` lines. `SECRET_CHROMA_DIR` is pinned **absolute** on purpose: the in-code default is the relative `./chroma_db`, which resolves against the working directory and would silently follow the process wherever it ran. Absolute means the data path can't drift, and index builds must set the same value so they write the store serve reads (section 5.2). `HF_HOME` points the embedder cache at the copied-in bge-m3 (section 3.7). `OLLAMA_URL` is set explicitly even though it matches the default, because leaving tmux means nothing is inherited from a shell anymore; the unit documents its own dependencies.
 - `ExecStart` runs uvicorn as a python module, not the `.venv/bin/uvicorn` wrapper, to sidestep the copied-venv shebang problem (section 3.7).
-- `ReadWritePaths`. `ProtectSystem=strict` makes the whole filesystem read-only except a few system paths, so serve needs explicit write access to the two places it writes: the Chroma store and the HF cache. Omit this and serve starts, then throws on the first query that touches the store. This is the single most likely "worked in tmux, broken under systemd" failure.
+- `ReadWritePaths`. `ProtectSystem=strict` makes the whole filesystem read-only except a few system paths, so serve needs explicit write access to the two places it writes: the Chroma store and the HF cache. Omit this and serve starts, then throws on the first query that touches the store.
 
 Everyday operations:
 ```bash
@@ -293,7 +300,7 @@ sudo systemctl restart secretrag
 sudo journalctl -u secretrag -f
 ```
 
-Restart after any edit to `secret_common.py` or `secret_registry.py`. The prompt, retrieval, and registry load at import plus `lru_cache`, and `secret_registry` is imported once on the first `/ask` and then cached, so a running process keeps the old versions until you restart it. Under systemd that is just `sudo systemctl restart secretrag`.
+Restart after any edit to `secret_common.py` or `secret_registry.py`. The prompt, retrieval, and registry load at import plus `lru_cache`, and `secret_registry` is imported once on the first `/ask` and then cached, so a running process keeps the old versions until you restart it. Under systemd that is just `sudo systemctl restart secretrag`. Remember that edits land in the `<user>` staging tree first and only reach `/opt` via the sync step (section 3.7 staging note); restart the unit *after* syncing, or the running service reloads the old file.
 
 > Because serve runs as a locked-down account in a `700` directory, reading or editing its files needs `sudo` (e.g. `sudo -u secretrag ...` to act as the service account). Your login user can't read into `/opt/secretrag` casually; that's the point.
 
@@ -318,8 +325,9 @@ The actual verified values (verses, litany, author hints, coordinates, find loca
 Matching and triggers, following how the community actually refers to casques:
 - City name: a normalized, word-boundary matcher over the canonical names. Aliases are supported but mostly unused, since the community references by city, verse number, or image number.
 - Number referents: `by_verse(n)` and `by_image(n)` resolve "verse 6" or "image 2" to the right city. The number-first form ("6th verse") requires an ordinal, so phrasing like "the first 6 verses" won't false-fire.
+- Aggregate roster: when a question names no single casque but asks about the set ("how many are found", "which are unsolved", "list the casques"), `registry_block_for` injects a compact roster of all 12 with derived counts, so count and status answers can't confabulate.
 
-`registry_block_for(question)` returns the union of the city-name and number-referent matches, formatted, or an empty string (a no-op) when nothing matches. It runs independently of retrieval. Even if the vector search comes back with junk, the registry still injects.
+`registry_block_for(question)` returns the per-city block(s) for any matched casque, or the roster when the question is aggregate, or an empty string. It runs independently of retrieval. Even if the vector search comes back with junk, the registry still injects.
 
 Injection point and precedence: inside `answer_question` in `serve.py`, right after `build_context()`:
 ```python
@@ -347,7 +355,7 @@ cd /opt/secretrag && sudo -u secretrag python3 secret_registry.py
 # expect: self-test OK - 12 cities; validate: clean
 ```
 
-How it was wired: integration went through an anchored-splice patcher (`go_live_patch.py`). It pre-flights every anchor (has to match exactly once or it aborts and touches nothing), timestamped-backs-up each target file, applies the edits, runs `py_compile`, and rolls back on failure. Two targets: the `serve.py` prepend above and the `secret_common.py` prompt clause. Keep future `secret_common.py` edits the same way: anchored splices with a backup and a compile check.
+How it was wired: integration went through an anchored-splice patcher. It pre-flights every anchor (has to match exactly once or it aborts and touches nothing), timestamped-backs-up each target file, applies the edits, runs `py_compile`, and rolls back on failure. Keep future `secret_common.py` edits the same way: anchored splices with a backup and a compile check.
 
 ---
 
@@ -378,7 +386,7 @@ The community front-end. Lets a member ask Ask Byron a question in Discord and g
 Location: `/opt/askbyron/askbyron_bot.py`, run by a dedicated loginless service account `<bot-user>` under a hardened systemd unit. Single file, two dependencies: `discord.py` and `httpx`. serve now runs under the same systemd pattern (section 5.6), so the bot and serve are peers, both real units, both surviving reboot on their own.
 
 ### 7.1 What it does
-A slash command, `/askbyron`, with the question as a required string and two optional params: `edition` (Auto-detect, English, Japanese, default Auto) and `show_sources` (default off). On invoke it defers the interaction, POSTs `{"question","edition"}` to serve's `/ask` at `http://127.0.0.1:8100/ask`, and posts the `answer` back. Because it runs on the box, the serve call is localhost and never leaves the machine.
+A slash command, `/askbyron`, with the question as a required string and two optional params: `edition` (Auto-detect, English, Japanese, default Auto) and `show_sources` (default off). On invoke it defers the interaction, POSTs `{"question","edition"}` to serve's `/ask` at `http://127.0.0.1:8100/ask`, and posts the `answer` back. Because it runs on the box, the serve call is localhost and never leaves the machine. Everything in serve's pipeline - the registry, the roster, and the gated forum tier - applies to the bot automatically, since it flows through the same `/ask`.
 
 Why slash and not a mention or prefix listener: slash commands give native deferral, which is exactly what a slow single-GPU backend needs (7.3), and they need no privileged intents. A mention or prefix bot would have to request the Message Content intent, meaning it reads every message in an 18k-member server. Slash reads nothing it is not explicitly invoked on. Fewer privileges, less surface, same result. The edition toggle and the sources toggle come along free as typed params, which a prefix parser would have to hand-roll.
 
@@ -392,7 +400,7 @@ These come straight out of the box's constraints in sections 2 and 10.
 
 - Latency and concurrency. The first `/ask` after a serve restart pauses several seconds while bge-m3 loads on CPU, and every generation after that takes a few seconds on the single resident 14B. The bot defers the interaction before touching the GPU (Discord shows "thinking...", which buys a 15-minute window to reply), and serializes generations behind an asyncio semaphore of 1 so it never fires several concurrent calls at one card. A queue guard (`MAX_QUEUE`) sheds load past a set depth instead of stacking a backlog that would blow the reply window, and a per-user cooldown (`USER_COOLDOWN_S`) stops one person spamming. Note the serialization lives in the bot only; serve itself does not serialize (section 10), but Ollama runs one inference slot (`OLLAMA_NUM_PARALLEL` unset, defaults to 1) and queues the rest, so a direct hit on serve degrades to latency rather than a GPU OOM.
 - Discord's 2000-character message limit. Registry answers can include verbatim verse or hint text and run long. The bot splits the reply on newline or space boundaries into sub-2000 pieces and sends them in order, so nothing truncates or throws.
-- serve down. The bot catches connection-refused and posts a friendly message instead of hanging the interaction. This used to be papering over serve's tmux fragility; now that serve is a systemd unit that survives reboot and restarts on failure (section 5.6), it is a genuine fallback for the narrow windows serve is actually down (a deploy restart, a crash mid-recovery) rather than a stand-in for a missing supervisor.
+- serve down. The bot catches connection-refused and posts a friendly message instead of hanging the interaction. Now that serve is a systemd unit that survives reboot and restarts on failure (section 5.6), it is a genuine fallback for the narrow windows serve is actually down (a deploy restart, a crash mid-recovery) rather than a stand-in for a missing supervisor.
 - Think-mode. The bot posts whatever `answer` holds, so if serve ever leaks "Okay, the user wants..." the bot cannot scrub it. Confirmed clean by curling `/ask` before shipping. If it ever leaks, the fix is serve-side (`"think": false`), see section 4.
 - Abuse surface. 18k members. The bot restricts to designated channels and an optional role, rate-limits per user, and keeps `sources` off by default (opt-in, and only the top one or two when on).
 
@@ -450,22 +458,26 @@ cd /opt/secretrag && sudo -u secretrag python3 secret_registry.py
 # expect: self-test OK - 12 cities; validate: clean
 ```
 
-**Smoke-test retrieval directly** (first call loads bge-m3, so a several-second silent pause is normal):
-```bash
-sudo -u secretrag bash -lc 'cd /opt/secretrag && source .venv/bin/activate && \
-  python -c "import secret_common as sc; [print(h[\"tier\"], round(h[\"distance\"],3), h[\"cite\"]) for h in sc.retrieve(\"Roanoke Elizabethan Gardens\")]"'
-```
-Expect a mix of `canon`, `commentary`, and `transcript`, distance-sorted. All `canon` means the vault collections aren't being reached.
-
-**Smoke-test the registry end to end** (proves injection is live):
+**Smoke-test the registry end to end** (proves injection is live, always hit the live endpoint, not a CLI import of a staging copy):
 ```bash
 # a number-referent question: the registry should bind image to verse to stone to city
 curl -s localhost:8100/ask -H 'content-type: application/json' \
   -d '{"question":"what verse number and gemstone go with image 2?","edition":null}' | python3 -m json.tool
 ```
-The discrete facts should come back from the registry, correct and bound to the right city, not a confabulated guess. The registry rides in the context above the passages, so it won't show up in the response's `sources` array (that list is the retrieved hits only).
+The discrete facts should come back from the registry, correct and bound to the right city. The registry rides in the context above the passages, so it won't show up in the response's `sources` array.
 
-Two guard checks worth keeping in the smoke set:
+**Smoke-test the forum gate** (proves the gate opens on history and stays shut on facts):
+```bash
+# history question: forum should appear in sources and be reported AS history
+curl -s localhost:8100/ask -H 'content-type: application/json' \
+  -d '{"question":"early forum theories about the Milwaukee verse fifth line","edition":null}' | python3 -m json.tool
+# fact question: forum should be entirely absent from sources
+curl -s localhost:8100/ask -H 'content-type: application/json' \
+  -d '{"question":"what gemstone goes with image 2","edition":null}' | python3 -m json.tool
+```
+The first should carry `historical forum` entries near the top of `sources` and frame them as old theories; the second should have zero forum entries - the gate never queried the collection.
+
+Two registry guard checks worth keeping in the smoke set:
 - An unsolved casque whose author hints imply a location. The answer should relay it as the author's implication and say the casque is unsolved, never "it's buried at X."
 - A hints question. The answer should quote the author's hint wording, not summarize it away. That confirms the anti-paste exemption is working.
 
@@ -489,41 +501,42 @@ Note the restart order under `Requires=`: restarting Ollama does not restart ser
 | `nvidia-smi` blank / model on CPU | Secure Boot on, or driver not built | Disable Secure Boot, reinstall driver, reboot |
 | OWUI Ollama dropdown empty | Ollama bound to loopback | `OLLAMA_HOST=0.0.0.0` (3.4); point OWUI at `host.docker.internal:11434` |
 | `ollama ps` CPU/GPU split | Model plus KV cache over 12 GB | flash attention plus `q8_0` KV cache (3.4) |
-| Vault collections indexed but retrieval never sees them | Index script wrote to `./chroma` while book is in `./chroma_db` | Import `sc.CHROMA_DIR` in index scripts (5.2), run from `/opt/secretrag` |
+| Collection indexed but retrieval never sees it | Index script wrote to a relative `./chroma` while the store is elsewhere, or built into the wrong tree | Inherit `sc.CHROMA_DIR` and pass `SECRET_CHROMA_DIR` absolute (5.2); build as the service account into `/opt`'s store |
 | Merge returns zero book hits | Queried `The_Secret` (capitalized); live name is lowercase `the_secret` | Use `the_secret` / `sc.COLLECTION` |
 | `secret-librarian` missing from OWUI list | OWUI is containerized, so `localhost:8100` hits the container | Use Base URL `http://<box-ip>:8100/v1` (or the Docker bridge gateway) |
 | Answers mix in irrelevant book-only chunks | OWUI KB left attached, double RAG | Detach `The_Secret` KB from the model (6) |
-| Prompt/retrieval/registry edits don't take effect | serve holds old versions at import plus `lru_cache` | `sudo systemctl restart secretrag` (5.6). Required after `secret_common.py` or `secret_registry.py` edits. |
-| Discrete facts still confabulated on a city question | Question named neither a city nor a verse/image number, so the registry didn't fire; or serve wasn't restarted after a registry edit | Confirm `registry_block_for(question)` is non-empty, restart serve |
+| Edits don't take effect in the live bot | Edited a staging copy the running service doesn't load, or serve holds old versions at import plus `lru_cache` | Sync to `/opt` and `sudo systemctl restart secretrag` (5.6); verify against `curl localhost:8100`, not a CLI import |
+| Forum opinion showing up on a factual answer | `_forum_intent` false-fired, or a trigger term is too broad | Tighten `_FORUM_TRIGGERS` (5.3); the gate should fail toward silence |
+| History question returns no forum | `_forum_intent` missed the phrasing (fails toward silence by design) | Add the phrasing to `_FORUM_TRIGGERS`, restart serve |
 | Author hints get summarized instead of quoted | Registry anti-paste exemption missing from the live prompt, or serve not restarted | Confirm the registry clause is in `SYSTEM_PROMPT` (5.4), restart serve |
 | Unsolved casque answer states a dig location as fact | Location leaked outside the guarded hints channel | Confirm the formatter suppresses `finder/year/location` for UNSOLVED, keep any author-implied location in `hints` only |
-| Registry patch pre-flight fails (anchor found 0x) | Live `serve.py` or `secret_common.py` drifted from the expected text | Re-cut the anchor against the current file. Do not hand-edit the file to match the patcher. |
-| serve looks frozen mid-index | bge-m3 on CPU embeds silently, no progress bar | Confirm with `top` (python pegging cores) or a moving `chroma.sqlite3` mtime, then wait |
-| serve fails to start under systemd, exec error naming a python path | Copied venv's uvicorn wrapper shebang points at the old (home) interpreter, which `ProtectHome=true` hides | Run uvicorn as a module: `ExecStart=.../.venv/bin/python -m uvicorn serve:app ...` (3.7, 5.6). Check `pyvenv.cfg` base interpreter is a system python |
-| serve starts clean, then errors on the first query | `HF_HOME` not pointed at the moved bge-m3 cache, or the cache isn't in `ReadWritePaths`, so the embedder can't load and can't re-download under `ProtectSystem=strict` | Copy the cache into `/opt`, set `HF_HOME`, add it to `ReadWritePaths` (3.7, 5.6) |
-| First `/ask` after a fresh start or reboot times out (`httpx.ReadTimeout`) | Cold model load stacked on the first bge-m3 load overran serve's 120s client timeout; the request landed before the model was resident | Pin the model with `KEEP_ALIVE=-1` and warm it at boot so no caller eats the cold load (3.4). Steady-state generations are seconds |
-| serve can't write, or a write path silently follows the working dir | `ProtectSystem=strict` with no `ReadWritePaths`, or the relative `./chroma_db` default resolving against the wrong CWD | Pin `SECRET_CHROMA_DIR` absolute and grant `ReadWritePaths` for the store and cache (5.6) |
+| Patch pre-flight fails (anchor found 0x) | Live file drifted from the expected text | Re-cut the anchor against the current file. Do not hand-edit the file to match the patcher |
+| serve fails to start under systemd, exec error naming a python path | Copied venv's uvicorn wrapper shebang points at the old (home) interpreter, which `ProtectHome=true` hides | Run uvicorn as a module: `ExecStart=.../.venv/bin/python -m uvicorn serve:app ...` (3.7, 5.6) |
+| serve starts clean, then errors on the first query | `HF_HOME` not pointed at the moved bge-m3 cache, or the cache isn't in `ReadWritePaths` | Copy the cache into `/opt`, set `HF_HOME`, add it to `ReadWritePaths` (3.7, 5.6) |
+| First `/ask` after a reboot times out | Cold model load stacked on the first bge-m3 load | Pin the model with `KEEP_ALIVE=-1` and warm it at boot (3.4). Steady-state generations are seconds |
+| serve can't write, or a write path follows the working dir | `ProtectSystem=strict` with no `ReadWritePaths`, or the relative `./chroma_db` default resolving against the wrong CWD | Pin `SECRET_CHROMA_DIR` absolute and grant `ReadWritePaths` (5.6) |
 | Model narrates "Okay, the user wants..." | Thinking mode on | `think=Off` at the preset; API callers pass `"think": false` |
-| Bot: `ModuleNotFoundError: No module named 'discord'` under systemd | Dependencies never landed in the venv, a silent install no-op | Install into the venv's own pip explicitly, confirm with `/opt/askbyron/.venv/bin/python -c "import discord, httpx"`, restart the unit |
-| Bot: command sync fails `403 Forbidden (error code: 50001): Missing Access` | Bot invited with the `bot` scope only, missing `applications.commands` | Re-invite with both scopes (re-authorizing an already-present bot just adds the grant, it does not kick or duplicate), restart |
-| Bot: slash command never appears in the server | Global command propagation delay, or the bot is not actually in that guild | Guild-scoped sync via `DISCORD_GUILD_ID`, confirm the ID matches the server and the invite carried `applications.commands` |
-| Bot: interaction hangs or times out | serve mid-generation on the single card, or a cold bge-m3 load exceeding the read timeout | Expected under contention; the semaphore serializes and the queue guard sheds load (7.3). Widen `HTTP_READ_TIMEOUT` only if cold loads routinely overrun |
+| Bot: `ModuleNotFoundError: No module named 'discord'` under systemd | Dependencies never landed in the venv | Install into the venv's own pip explicitly, confirm the import, restart |
+| Bot: command sync fails `403 / 50001 Missing Access` | Bot invited with the `bot` scope only | Re-invite with both `bot` and `applications.commands` scopes, restart |
+| Bot: slash command never appears | Global propagation delay, or wrong guild | Guild-scoped sync via `DISCORD_GUILD_ID`, confirm the ID and the invite scope |
 
 ---
 
 ## 10. Known limitations
 
-- Discrete-fact confabulation, mitigated as of 2026-08-27. The city registry (5.7) turns settled per-city facts into an authoritative lookup, so the model reads them instead of guessing. What's left: it only covers city- or number-anchored facts, so a question that names neither a city nor a verse/image number still falls back to RAG and can confabulate. And prompt-injected precedence is strong but not a hard guarantee at 14B. The only guaranteed fix is a deterministic post-generation validator (phase 2, section 12).
+- Discrete-fact confabulation, mitigated as of 2026-08-27. The city registry (5.7) turns settled per-city facts into an authoritative lookup, so the model reads them instead of guessing. What's left: it only covers city-, number-, or aggregate-anchored facts, so a question that anchors on none of those still falls back to RAG and can confabulate. And prompt-injected precedence is strong but not a hard guarantee at 14B. The only guaranteed fix is a deterministic post-generation validator (phase 2, section 12).
+- Forum tier is narrow-use by design. `vault_forum` is ~40k posts, roughly 21x the rest of the corpus combined, but it is gated (5.3) to surface only on history/theory questions, so on everyday factual and solve questions it is never queried and contributes nothing. That is the intended trade: unverified opinion stays out of factual answers. The cost is that the gate is a keyword heuristic that fails toward silence, so a history question phrased in words the trigger misses gets no forum. Tune `_FORUM_TRIGGERS` as misses show up; it will never be exhaustive.
 - Numbering-guardrail leak, mostly handled. The prompt and registry now push city/verse/image referents and forbid "casque N", but watch for the occasional echo that originates in the vault notes themselves.
-- Persona versus accuracy, reduced but not gone. Unsolved casques carry `status: UNSOLVED` and their author hints are guarded as clues, which curbs the warm voice sliding into false certainty. It doesn't kill it. Keep an eye on confidence swinging with phrasing on unsolved casques, and on author hints being framed as if they were canonical verse.
+- Persona versus accuracy, reduced but not gone. Unsolved casques carry `status: UNSOLVED` and their author hints are guarded as clues, which curbs the warm voice sliding into false certainty. It doesn't kill it. Keep an eye on confidence swinging with phrasing on unsolved casques.
 - Verbatim-hint context cost. Author hints (and, under the current exemption scope, verse text) inject verbatim, so a single city block is chunky. Several cities named in one question can pressure the 16K window. Levers: narrow the anti-paste exemption to hints only, or gate verse and hints to inject only when the question needs them.
-- Single-turn. `/v1/chat/completions` ignores prior turns by design, so there's no conversational memory in OWUI. Follow-ups like "what about the Japanese edition of that?" lose the referent. The Discord bot is single-turn too: each `/askbyron` is independent, no thread memory.
-- No serialization at serve itself. All backpressure (semaphore, queue guard, cooldown) lives in the bot, so anything hitting serve's `/ask` directly bypasses it. It degrades to latency rather than a crash because Ollama runs a single inference slot (`OLLAMA_NUM_PARALLEL` defaults to 1) and queues the rest, but there is no per-client rate limit at serve. Adding one is optional (section 12), lower priority now that the model can't OOM from concurrency.
-- Cold load after reboot. `KEEP_ALIVE=-1` keeps the model resident through idle periods, but it does not pre-load at boot. After a reboot the model cold-loads on the first request, so the first caller waits (tens of seconds) unless something warms it first. Optional auto-warm in section 12.
+- Single-turn. `/v1/chat/completions` ignores prior turns by design, so there's no conversational memory in OWUI. The Discord bot is single-turn too: each `/askbyron` is independent, no thread memory.
+- No serialization at serve itself. All backpressure (semaphore, queue guard, cooldown) lives in the bot, so anything hitting serve's `/ask` directly bypasses it. It degrades to latency rather than a crash because Ollama runs a single inference slot and queues the rest, but there is no per-client rate limit at serve. Adding one is optional (section 12).
+- Cold load after reboot. `KEEP_ALIVE=-1` keeps the model resident through idle periods, but it does not pre-load at boot. After a reboot the model cold-loads on the first request. Optional auto-warm in section 12.
+- Staging/live split. Code is edited in the `<user>` tree and only reaches the live `/opt` service by a manual sync + restart. Forget the sync and the running bot keeps loading the old file with no error. A one-command deploy step (section 12) closes this; until then, verify changes against the live endpoint, not a working-copy import.
 - `/health` counts the book only (220). Cosmetic, predates the merge.
 - Transcript tier is roughly 20% banter. Kept in its own collection with a low pull count so it rarely wins a slot. Stripping banter properly needs a semantic summarization pass, not rules.
-- One 14B resident at a time. The always-on bot and interactive chat contend for the same card, so generations are effectively serialized. The bot enforces that on its side with a semaphore of 1 and a queue guard (7.3), but the ceiling is still one 14B doing one generation at a time. If community demand outgrows it, that is a second-card or smaller-model conversation, not a bot fix.
-- Public question echo. The bot posts the asker's question above the answer (7.4), so it rebroadcasts user-submitted text with a name attached. In an 18k-member server the channel and role gates are load-bearing for keeping that from being abused, and a profanity screen on the echo is the lever if it starts.
+- One 14B resident at a time. The always-on bot and interactive chat contend for the same card, so generations are effectively serialized. If community demand outgrows it, that is a second-card or smaller-model conversation, not a bot fix.
+- Public question echo. The bot posts the asker's question above the answer (7.4), so it rebroadcasts user-submitted text with a name attached. In an 18k-member server the channel and role gates are load-bearing, and a profanity screen on the echo is the lever if it starts.
 
 ---
 
@@ -533,26 +546,30 @@ The box sits on an isolated services VLAN. Ollama and serve.py both bind broadly
 
 serve runs as a dedicated loginless account (`<user>`) under a hardened systemd unit (`ProtectSystem=strict`, `ProtectHome=true`, `NoNewPrivileges`, `PrivateTmp`, and the rest), out of `/opt/secretrag` owned by that account at `700`. It holds no shell and no infra tools. Its one authentication gap is unchanged: serve accepts an API key but does not verify it, so it relies entirely on network controls. Enforcing that key is an open item (section 12) and matters more while the port is still bound broadly.
 
-The city registry adds no network surface (it's an in-process module), but its data file holds community-privileged puzzle content: author hints and verified pairings. Treat the values in `secret_registry.py` like the private ops note and keep them out of public repos and paste-ables.
+Corpus data is kept out of this public document. The city registry (`secret_registry.py`) holds community-privileged puzzle content (author hints, verified pairings); treat its values like the private ops note. The historical forum archive (`vault_forum`) is drawn from a public community forum, but it carries usernames and years of unverified opinion, so the raw export and its collection are not reproduced here either, and the tier is framed to the model as lowest-authority unverified opinion (5.3, 5.4). Neither adds network surface; both are in-process collections.
 
 Firewall rules, addressing, and hardening status live in a private ops note, not here. If you adapt this runbook, don't expose the inference or RAG ports past your trusted segment, and put authentication in front of anything public.
 
-The Discord bot is live and follows the same posture. Its token is a secret in an env file owned by the service account at `0600`, never committed. It holds no infrastructure tools, and it reaches serve over localhost on the box rather than across the network, so no inbound rule or public exposure of serve was needed (section 7). Its only outbound paths are the Discord gateway and the localhost POST to serve, nothing else. The box permits outbound on the services VLAN but blocks inbound, which is all a gateway bot needs.
+The Discord bot is live and follows the same posture. Its token is a secret in an env file owned by the service account at `0600`, never committed. It holds no infrastructure tools, and it reaches serve over localhost on the box rather than across the network, so no inbound rule or public exposure of serve was needed (section 7). Its only outbound paths are the Discord gateway and the localhost POST to serve. The box permits outbound on the services VLAN but blocks inbound, which is all a gateway bot needs.
 
 ---
 
 ## 12. Open TODOs (non-sensitive)
 
-- [x] City registry. Done 2026-08-27. `secret_registry.py`: 12-city closed-set structured-fact lookup, injected authoritative above retrieved passages on a city or verse/image-number match. Formatter guards (no dig location for unsolved, known-unknowns as "(not established)", region-band lat/long). Author hints injected verbatim under a status-aware guard, exempt from the summarize-don't-paste rule. Wired with an anchored-splice patcher (backup plus `py_compile` plus rollback). Verified live.
-- [x] Discord bot. Done 2026-08-28. discord.py slash command `/askbyron`, RAG-only with no infra tools, calls serve's `/ask` on localhost, runs on the box as `<bot-user>` under a hardened systemd unit. Defers plus semaphore-of-1 serialization for the single 14B, channel and role gates, per-user cooldown and a queue guard, sub-2000 chunking, question echo. See section 7.
-- [x] systemd unit for serve.py. Done 2026-08-28. serve relocated to `/opt/secretrag` under a dedicated loginless account, running under a hardened unit that mirrors the bot's, with `Requires=ollama.service`, an absolute `SECRET_CHROMA_DIR`, `HF_HOME` on the moved bge-m3 cache, and `ReadWritePaths` for the store and cache. Enabled, so it survives reboot and restarts on failure. `KEEP_ALIVE=-1` added so the model stays resident. See sections 3.7 and 5.6.
-- [ ] Loopback-bind Ollama and serve. Both bind `0.0.0.0` today so the OWUI container can reach them, leaving the firewall as the only guard on two unauthenticated ports (section 11). The fix is coupled: bind both to `127.0.0.1` and move OWUI to host networking (or reach the host via the docker bridge gateway) so the container still connects. Do it as its own change, with OWUI (and the reverse proxy in front of it) as the only moving part, after confirming what each client actually targets.
-- [ ] Enforce serve's API key. serve accepts but ignores the key, relying on network controls alone. Verifying it removes the single-point-of-failure where one firewall slip exposes an open compute endpoint. Cheap because both clients (OWUI, the bot) are ours; worth doing while the port is still bound broadly.
-- [ ] Optional: auto-warm the model after boot. `KEEP_ALIVE=-1` keeps the model resident but doesn't pre-load it, so the first request after a reboot cold-loads (section 10). A boot-time warmup (a `systemd` oneshot or timer that fires one `/ask`, or an `ExecStartPost` on Ollama) would take that hit off the first caller. Reboots are rare and the bot defers, so this is a refinement, not a fix.
-- [ ] Phase-2 output validator. A deterministic post-generation check on the registry's discrete fields (verse, image, stone). Regenerate with the value pinned, not silent string replacement. A corrector with false positives is worse than the confabulation it's chasing. Scope it to single-city questions and those three fields, and build it only after measuring how often injection alone actually misses in production.
-- [ ] Rate limiting at serve. All backpressure lives in the bot today, so a direct hit on serve bypasses it (section 10). Lower priority now that concurrency can't OOM the card (Ollama serializes to one slot), but still the right place for a per-client limit if serve is ever reachable by anything but the two known clients.
-- [ ] Extend `/health` to count all three collections.
-- [ ] Optional: semantic show-notes pass over transcripts to kill the interleaved banter, then embed the summaries instead of raw windows.
+- [x] City registry. Done 2026-08-27. 12-city closed-set structured-fact lookup with an aggregate roster, injected authoritative above retrieved passages. Formatter guards (no dig location for unsolved, known-unknowns as "(not established)", region-band lat/long), author hints verbatim under a status-aware guard. See section 5.7.
+- [x] Discord bot. Done 2026-08-28. discord.py slash command `/askbyron`, RAG-only, calls serve's `/ask` on localhost, hardened systemd unit. See section 7.
+- [x] systemd unit for serve.py. Done 2026-08-28. serve relocated to `/opt/secretrag` under a loginless account, hardened unit, `Requires=ollama.service`, absolute `SECRET_CHROMA_DIR`, `HF_HOME` on the moved cache, `ReadWritePaths` for store and cache, `KEEP_ALIVE=-1`. See sections 3.7 and 5.6.
+- [x] Historical forum tier (gated). Done 2026-08-28. `vault_forum`, ~40k cleaned posts (2001-2019), lowest-authority COMMENTARY, queried only when `_forum_intent` matches a history/theory question. Competes normally when the gate opens, absent otherwise. See sections 5.1-5.4.
+- [ ] `deploy.sh` for staging-to-live. The single highest-value operational cleanup. Code is edited in the `<user>` tree and only reaches `/opt` by a manual rsync + chown + restart; miss it and the bot silently runs stale code. One script that rsyncs the `.py` files to `/opt/secretrag`, chowns to the service account, and `systemctl restart secretrag` collapses "changed it" and "the bot runs it" into one command and removes that whole class of mistake. Should also refuse to run if the working tree fails `py_compile`.
+- [ ] Forum trigger tuning. `_FORUM_TRIGGERS` (5.3) is a keyword heuristic that fails toward silence. Watch for history questions that come back with no forum and add their phrasings; this is ongoing, not one-time.
+- [ ] Loopback-bind Ollama and serve. Both bind `0.0.0.0` today so the OWUI container can reach them, leaving the firewall as the only guard on two unauthenticated ports (section 11). The fix is coupled: bind both to `127.0.0.1` and move OWUI to host networking (or reach the host via the docker bridge gateway) so the container still connects. Do it as its own change, after confirming what each client actually targets.
+- [ ] Enforce serve's API key. serve accepts but ignores the key, relying on network controls alone. Verifying it removes the single-point-of-failure where one firewall slip exposes an open compute endpoint. Cheap, both clients are ours.
+- [ ] Optional: auto-warm the model after boot. `KEEP_ALIVE=-1` keeps the model resident but doesn't pre-load it, so the first request after a reboot cold-loads (section 10). A boot-time warmup (a `systemd` oneshot or an `ExecStartPost` on Ollama) takes that hit off the first caller.
+- [ ] Phase-2 output validator. A deterministic post-generation check on the registry's discrete fields (verse, image, stone). Regenerate with the value pinned, not silent string replacement. Scope it to single-city questions and those three fields, and build it only after measuring how often injection alone actually misses in production.
+- [ ] Rate limiting at serve. All backpressure lives in the bot today, so a direct hit on serve bypasses it (section 10). Lower priority now that concurrency can't OOM the card, but still the right place for a per-client limit.
+- [ ] Optional future corpora, following the `vault_forum` pattern (own collection, same embedder/space, indexed as the service account, gated or tiered as appropriate). Byron's pre-publication manuscript for comparing pre-pub changes, which must be a separate NON-canonical tier that never outranks the published book (published-wins guardrail), ideally a structured draft-vs-published diff rather than raw retrieval. A news/advertising archive for a public-history timeline. Both are additive and must not touch `the_secret` or the registry.
+- [ ] Extend `/health` to count all four collections.
+- [ ] Optional: semantic show-notes pass over transcripts to kill the interleaved banter.
 - [ ] Revisit the persona voice knob if warmth keeps leaking into false certainty on unsolved casques.
 - [ ] Optional: narrow the registry anti-paste exemption to `hints` only if verses shouldn't paste unprompted.
 - [ ] Optional: profanity screen on the bot's question echo if the public rebroadcast (7.4) gets abused.
@@ -563,8 +580,9 @@ The Discord bot is live and follows the same posture. Its token is a secret in a
 
 ## 13. Changelog
 
-- **2026-08-28, serve.py under systemd.** Moved serve off tmux onto a hardened systemd unit (`secretrag`), closing the last "dies on reboot" gap. Relocated the service to `/opt/secretrag` under a dedicated loginless account, matching the bot's `/opt` + service-account pattern, which let the unit run the same hardening block (`ProtectSystem=strict`, `ProtectHome=true`, `NoNewPrivileges`, `PrivateTmp`) with no home-dir carve-out. Unit specifics: `Requires=ollama.service` so serve is ordered after and stopped with its backend; `SECRET_CHROMA_DIR` pinned absolute so the store can't drift with the working directory; `HF_HOME` pointed at the bge-m3 cache copied into `/opt`, with `ReadWritePaths` granting the store and cache write access under `strict`; uvicorn launched as `python -m uvicorn` to dodge the copied-venv's stale wrapper shebang. Added `OLLAMA_KEEP_ALIVE=-1` so the model stays resident instead of unloading after 5 idle minutes; the boundary is that it still cold-loads once on the first request after a reboot, so warm it at boot. Migration snags worth recording: the copied venv's `.venv/bin/uvicorn` shebang still pointed at the old home-dir interpreter (invisible under `ProtectHome`), the ~4.3 GB bge-m3 cache had to be copied and `HF_HOME`-pointed or the first query failed, and the first post-migration `/ask` hit `httpx.ReadTimeout` because a cold model load (worsened by disk-cache churn from moving ~10 GB) overran serve's 120s client timeout. Confirmed live: unit enabled and active, `/health` clean, a grounded answer with sources, and a correct grounding refusal on a nonsense query. Reboot survival is config-correct but not yet watched (see section 8).
-- **2026-08-28, Discord bot live.** Added a discord.py slash command (`/askbyron`) that forwards a member's question to serve's `/ask` and posts the answer back in the channel. Runs on the box as a dedicated loginless service account under a hardened systemd unit, so it survives reboot on its own. RAG-only by construction: it holds no tool that can reach the box, network, or shell, and its only outbound paths are the Discord gateway and a localhost POST to serve. Handles the box's known constraints: defers the interaction and serializes generations behind a semaphore of 1 for the single 14B, a queue guard and per-user cooldown for the 18k-member abuse surface, sub-2000-character chunking for long registry answers, and a friendly message when serve is down. Slash chosen over a mention or prefix listener so it needs no Message Content intent. Echoes the asker's question above the answer, since slash invocations are otherwise private to the caller. Deploy snags worth recording: the venv install silently did not land the first time (fixed by installing into the venv's own pip and confirming the import), and command sync returned `403 / 50001 Missing Access` until the bot was re-invited with the `applications.commands` scope, not just `bot`.
-- **2026-08-27, city registry live.** Added `secret_registry.py`, a stdlib-only 12-city closed-set structured-fact lookup. Per-city verified facts inject authoritative above the retrieved passages when a question names a city or references a verse/image number (number-referent triggers, ordinal-guarded). Formatter guards: unsolved casques never emit a find location, known-unknowns render "(not established)", lat/long is labelled region-not-dig-site. Author hints inject verbatim under a status-aware guard (clues-not-settled for unsolved), exempt from the summarize-don't-paste rule so the author's wording reaches the seeker. `SYSTEM_PROMPT` updated: registry is top authority over passages, plus the anti-paste exemption. Wired with `go_live_patch.py` (pre-flight, timestamped backup, `py_compile`, rollback). `validate_registry()` enforces unique verse and image numbers, found-completeness, and unsolved-no-location. Verified live against serve on image-to-verse-to-stone binding, verbatim author hints, and an author-implied location staying hedged on an unsolved casque.
-- **2026-08-27, serve.py RAG pivot.** Moved retrieval to the custom `serve.py`/Chroma stack. Indexed two new tiers into the shared store, `vault_commentary` (344) and `vault_transcripts` (1303), alongside `the_secret` (220). Fixed the index-script Chroma path to inherit `sc.CHROMA_DIR` (the silent wrong-store bug). Rewrote `secret_common.py` retrieval into a three-collection distance merge with tier labels, added CANON/COMMENTARY, numbering, found-vs-unsolved, and synthesize guardrails, and merged in the "Ask Byron" persona. Started serve under tmux on the serve port, wired OWUI to it over an OpenAI connection on the box LAN IP, and detached OWUI's native `The_Secret` KB. Flagged discrete-fact confabulation, which set up the city registry as the next job.
-- **2026-08-20, initial build.** Ubuntu 24.04, driver 595.84, Ollama plus qwen3:14b, qwen3-chat (16K), flash attn plus q8_0 cache, Open WebUI. *The Secret* corpus v1 to v2 (heading-magnet fix). Retrieval Top K raised to 5-6.
+- **2026-08-28, historical forum tier (gated).** Added `vault_forum`, a fourth Chroma collection: ~40k cleaned posts from the community's forum archive (2001-2019, 309 threads), embedded with the same bge-m3/cosine as every other tier so distances stay comparable. It is the lowest-authority COMMENTARY source and is gated - `retrieve()` queries it only when `_forum_intent(question)` matches a history-of-the-search or old-theory question, so it stays entirely out of factual and solve answers and surfaces only where it belongs. When the gate opens it competes on distance normally, no penalty, capped at `SECRET_N_FORUM`. `build_context()` labels it `[COMMENTARY - historical forum - ...]` and `SYSTEM_PROMPT` frames it as unverified, often-outdated opinion that never overrides the book, wiki, or podcast. Indexer `forum_index.py` is stdlib-only (csv + datetime), strips BBCode quote blocks, drops trivial/quote-only posts, windows long posts, and carries date/thread/author metadata for citation. Built into `/opt`'s store as the service account. Verified live on the `/ask` endpoint: forum surfaces and is reported as history on a history query, and is entirely absent on a gemstone/fact query.
+- **2026-08-28, serve.py under systemd.** Moved serve off tmux onto a hardened systemd unit (`secretrag`), closing the last "dies on reboot" gap. Relocated to `/opt/secretrag` under a dedicated loginless account, matching the bot's pattern. `Requires=ollama.service`; `SECRET_CHROMA_DIR` pinned absolute; `HF_HOME` pointed at the bge-m3 cache copied into `/opt`, with `ReadWritePaths` for the store and cache under `strict`; uvicorn launched as `python -m uvicorn` to dodge the copied-venv wrapper shebang. Added `OLLAMA_KEEP_ALIVE=-1` so the model stays resident, with the boundary that it still cold-loads once on the first request after a reboot. Confirmed live: unit enabled and active, `/health` clean, grounded answers with sources.
+- **2026-08-28, Discord bot live.** Added a discord.py slash command (`/askbyron`) that forwards a member's question to serve's `/ask` and posts the answer back. Runs on the box as a dedicated loginless service account under a hardened systemd unit. RAG-only by construction. Handles the box's constraints: defers and serializes behind a semaphore of 1, a queue guard and per-user cooldown for the 18k-member abuse surface, sub-2000-character chunking, a friendly message when serve is down, and a question echo since slash invocations are otherwise private to the caller.
+- **2026-08-27, city registry live.** Added `secret_registry.py`, a stdlib-only 12-city closed-set structured-fact lookup with an aggregate roster for count/status questions. Per-city verified facts inject authoritative above the retrieved passages on a city or verse/image-number match. Formatter guards: unsolved casques never emit a find location, known-unknowns render "(not established)", lat/long labelled region-not-dig-site. Author hints inject verbatim under a status-aware guard, exempt from the summarize-don't-paste rule. `SYSTEM_PROMPT` updated: registry is top authority. Verified live on image-to-verse-to-stone binding, verbatim author hints, and an author-implied location staying hedged on an unsolved casque.
+- **2026-08-27, serve.py RAG pivot.** Moved retrieval to the custom `serve.py`/Chroma stack. Indexed `vault_commentary` (344) and `vault_transcripts` (1303) alongside `the_secret` (220). Rewrote `secret_common.py` retrieval into a distance merge with tier labels, added the CANON/COMMENTARY, numbering, found-vs-unsolved, and synthesize guardrails, and merged in the "Ask Byron" persona. Wired OWUI over an OpenAI connection and detached OWUI's native `The_Secret` KB.
+- **2026-08-20, initial build.** Ubuntu 24.04, driver 595.84, Ollama plus qwen3:14b, qwen3-chat (16K), flash attn plus q8_0 cache, Open WebUI. *The Secret* corpus v1 to v2 (heading-magnet fix).
