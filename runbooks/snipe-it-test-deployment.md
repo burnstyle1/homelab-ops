@@ -5,18 +5,18 @@
 | **Date** | 2026-09-30 |
 | **Status** | Test instance (fake data only), running |
 | **Host** | Proxmox → CasaOS VM 102 (public-facing services VLAN) |
-| **URL** | `https://assets.12treasures.com` (Cloudflare Tunnel + Access) |
+| **URL** | `https://assets.example.com` (placeholder; Cloudflare Tunnel + Access) |
 | **Stack** | Docker Compose: `snipe/snipe-it:latest` (v8.0.0-pre at time of install) + `mariadb:11` |
 
 ## Purpose
 
-Evaluate Snipe-IT as an asset-tagging / inventory system before proposing it for a production deployment at work. Specifically testing:
+Evaluate Snipe-IT as an asset-tagging / inventory system. Specifically testing:
 
 - Bulk-created placeholder assets + sheet-printed QR labels ("stick first, document later")
 - Phone scan → asset page → edit, reachable from off-network
 - CSV import, label layout, file attachments, archived/disposal statuses
 
-> **Data rule:** this instance is on a personal domain and a disposable VM. Fake data only. No real hostnames, serials, usernames, or exports from work systems.
+> **Data rule:** this instance lives on a disposable, internet-reachable VM. Fake data only. No real hostnames, serials, usernames, or inventory exports.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ Evaluate Snipe-IT as an asset-tagging / inventory system before proposing it for
 Phone / browser
    │ HTTPS
    ▼
-Cloudflare edge (Access policy: email OTP)
+Cloudflare edge (Access policy)
    │ tunnel
    ▼
 cloudflared (CasaOS VM, host networking)
@@ -84,7 +84,7 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: <generate: echo "base64:$(openssl rand -base64 32)">
-      APP_URL: https://assets.12treasures.com
+      APP_URL: https://assets.example.com
       APP_TIMEZONE: America/New_York
       APP_LOCALE: en-US
       APP_TRUSTED_PROXIES: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
@@ -117,8 +117,8 @@ curl -sI http://localhost:18085 | head -1    # expect 302 → /setup
 
 ### 3. Cloudflare
 
-- Tunnel public hostname: `assets.12treasures.com` → `http://<casaos-vm-ip>:18085` (service type **HTTP**, not HTTPS: the container only speaks plain HTTP).
-- Cloudflare Access application in front of the hostname (email one-time PIN).
+- Tunnel public hostname: `assets.example.com` → `http://<casaos-vm-ip>:18085` (service type **HTTP**, not HTTPS: the container only speaks plain HTTP).
+- Cloudflare Access application in front of the hostname.
 
 ### 4. Setup wizard choices
 
@@ -176,7 +176,7 @@ TEST-00001,Unassigned Tag,Placeholder,Unknown,Tagged - Needs Info
 ## Verification checklist
 
 - [ ] Log in, log out, log back in: no redirect loop
-- [ ] Asset page links and QR codes use `https://assets.12treasures.com`
+- [ ] Asset page links and QR codes use `https://assets.example.com`
 - [ ] Phone **off Wi-Fi**: scan QR → Cloudflare Access → asset page
 - [ ] Second scan does not re-prompt for login
 - [ ] Edit a placeholder (model, serial, note, status) and time it: this × asset count = real rollout cost
