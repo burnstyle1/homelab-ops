@@ -22,6 +22,8 @@ CrowdSec · Nginx Proxy Manager · Ollama / Open WebUI (local LLM)
 | 04 | [Perimeter cleanup](incidents/04-perimeter-security-audit.md) | Hardening | Found and closed exposure I'd let creep in over time. |
 | 05 | [macvlan → ipvlan](incidents/05-docker-macvlan-ipvlan-migration.md) | Networking | Containers couldn't reach their own host. macvlan working as designed. |
 | 06 | [Accessibility iMac crash-loop](runbooks/2017-imac-voicecontrol-accessibility-runbook.md) | Endpoint | A crash-looping speech daemon made the Mac crawl. The "slow" disk everyone blamed was innocent. |
+| 07 | [Snipe-It deployment testing](runbooks/snipe-it-test-deployment.md) | Service | Evaluate Snipe-IT as an asset-tagging / inventory system. |
+| 08 | [The prison phone](runbooks/the-prison-phone-project.md) | Endpoint | Bridging an old Wintel analog prison handset onto the homelab. |
 
 ## Also here
 
